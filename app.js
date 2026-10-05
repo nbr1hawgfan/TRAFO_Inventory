@@ -5,7 +5,7 @@
   const KEY = "custinv_" + C.customer;
   const $ = (id) => document.getElementById(id);
   const S = { token: null, name: "", summary: null, page: 1, pages: 1, query: "", loc: "ALL",
-              itemSort: { key: "pallets", asc: false }, tx: null, txView: "loads" };
+              itemSort: { key: "pallets", asc: false }, tx: null, txView: "loads", party: null };
 
   /* ---------- helpers ---------- */
   const store = {
@@ -15,6 +15,7 @@
   };
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const num = (v) => (v === null || v === undefined || v === "") ? "" : Number(v).toLocaleString("en-US");
+  const plural = (n, w) => `${num(n)} ${w}${Number(n) === 1 ? "" : "s"}`;
   function fmtDate(v) {                     // 'YYYY-MM-DD' -> MM/DD/YYYY without timezone shifts
     const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(v || ""); return m ? `${m[2]}/${m[3]}/${m[1]}` : "";
   }
@@ -22,8 +23,8 @@
   function isoLocal(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
   function busy(on, text) { $("busyText").textContent = text || "Loading"; $("busy").hidden = !on; }
 
-  const NUM_KEYS = new Set(["qty", "age_days", "pallets", "bays", "max_age"]);
-  const DATE_KEYS = new Set(["date_received", "date", "oldest"]);
+  const NUM_KEYS = new Set(["qty", "age_days", "pallets", "bays", "max_age", "loads"]);
+  const DATE_KEYS = new Set(["date_received", "date", "oldest", "first", "last"]);
 
   async function api(action, payload = {}) {
     let res;
@@ -166,6 +167,7 @@
   async function loadTx(log) {
     busy(true, "Loading transactions");
     try {
+      S.party = null;
       S.tx = await api("transactions", { from: $("txFrom").value, to: $("txTo").value, direction: $("txDir").value, log: !!log });
       if (S.tx.from !== $("txFrom").value) $("txFrom").value = S.tx.from;
       renderTx();
@@ -181,13 +183,67 @@
     ["lwh_id", "LWH ID"], ["item_number", "Item #"], ["item_description", "Item Description"], ["lot_number", "Lot #"],
     ["qty", "Qty"], ["location", "Warehouse"]];
 
+  /* Shipper for inbound loads, consignee for outbound. Loads not closed out yet have no shipper. */
+  const OPEN_LABEL = "Not closed out yet";
+  const partyOf = (l) => (l.direction === "Inbound" ? l.shipper : l.consignee) || (l.status === "Open" ? OPEN_LABEL : "Not recorded");
+  const PARTY_COLS = [["party", "Shipper / Consignee"], ["direction", "Direction"], ["loads", "Loads"], ["pallets", "Pallets"],
+    ["qty", "Qty"], ["first", "First Load"], ["last", "Last Load"]];
+
+  function partners() {
+    const m = new Map();
+    S.tx.loads.forEach((l) => {
+      const k = l.direction + "|" + partyOf(l);
+      const p = m.get(k) || { party: partyOf(l), direction: l.direction, loads: 0, pallets: 0, qty: 0, first: l.date, last: l.date };
+      p.loads++; p.pallets += Number(l.pallets) || 0; p.qty += Number(l.qty) || 0;
+      if (l.date < p.first) p.first = l.date; if (l.date > p.last) p.last = l.date;
+      m.set(k, p);
+    });
+    return [...m.values()].sort((a, b) => (a.direction === b.direction ? b.loads - a.loads || a.party.localeCompare(b.party)
+                                            : a.direction === "Inbound" ? -1 : 1));
+  }
+
+  function filtered() {
+    const t = S.tx, f = S.party;
+    if (!f) return { loads: t.loads, pallets: t.pallets };
+    const loads = t.loads.filter((l) => l.direction === f.direction && partyOf(l) === f.party);
+    const ids = new Set(loads.map((l) => l.inv_receipt));
+    return { loads, pallets: t.pallets.filter((p) => ids.has(p.inv_receipt)) };
+  }
+
+  function setView(v) {
+    S.txView = v;
+    document.querySelectorAll(".seg-btn").forEach((x) => x.classList.toggle("active", x.dataset.view === v));
+    renderTx();
+  }
+
   function renderTx() {
     const t = S.tx; if (!t) return;
     const T = t.totals;
     $("txTotals").innerHTML = `
       <div class="tx-box"><h3>Inbound</h3><p><strong>${num(T.inbound_loads)}</strong> loads &middot; <strong>${num(T.inbound_pallets)}</strong> pallets &middot; qty <strong>${num(T.inbound_qty)}</strong></p></div>
       <div class="tx-box out"><h3>Outbound</h3><p><strong>${num(T.outbound_loads)}</strong> loads &middot; <strong>${num(T.outbound_pallets)}</strong> pallets &middot; qty <strong>${num(T.outbound_qty)}</strong></p></div>`;
-    const loads = S.txView === "loads", cols = loads ? LOAD_COLS : PALLET_COLS, rows = loads ? t.loads : t.pallets;
+
+    const f = S.party, data = filtered();
+    $("txFilter").hidden = !f || S.txView === "partners";
+    if (f) $("txFilterText").textContent = `Showing ${f.direction.toLowerCase()} loads for ${f.party}: ${plural(data.loads.length, "load")}, ${plural(data.pallets.length, "pallet")}`;
+    const range = `${fmtDate(t.from)} to ${fmtDate(t.to)}`;
+
+    if (S.txView === "partners") {
+      const rows = partners(), max = Math.max(1, ...rows.map((r) => r.loads));
+      $("txTable").querySelector("thead").innerHTML = "<tr>" + PARTY_COLS.map(([k, l]) => `<th${NUM_KEYS.has(k) ? ' class="r"' : ""}>${l}</th>`).join("") + "<th></th></tr>";
+      $("txTable").querySelector("tbody").innerHTML = rows.length ? rows.map((r, i) => `<tr class="clickable" data-i="${i}" tabindex="0" title="Show these loads">
+          <td>${esc(r.party)}</td><td><span class="dir ${r.direction}">${r.direction}</span></td>
+          <td class="r"><strong>${num(r.loads)}</strong></td><td class="r">${num(r.pallets)}</td><td class="r">${num(r.qty)}</td>
+          <td>${fmtDate(r.first)}</td><td>${fmtDate(r.last)}</td>
+          <td class="bar-cell"><div class="bar ${r.direction === "Inbound" ? "in" : ""}" style="width:${Math.round(r.loads / max * 100)}%"></div></td></tr>`).join("")
+        : `<tr><td class="empty" colspan="8">No loads in this date range.</td></tr>`;
+      S.partnerRows = rows;
+      const nIn = rows.filter((r) => r.direction === "Inbound").length;
+      $("txInfo").textContent = `${range}: ${num(nIn)} shippers sent inbound loads. Select a row to see those loads.`;
+      return;
+    }
+
+    const loads = S.txView === "loads", cols = loads ? LOAD_COLS : PALLET_COLS, rows = loads ? data.loads : data.pallets;
     $("txTable").querySelector("thead").innerHTML = "<tr>" + cols.map(([k, l]) => `<th${NUM_KEYS.has(k) ? ' class="r"' : ""}>${l}</th>`).join("") + "</tr>";
     $("txTable").querySelector("tbody").innerHTML = rows.length ? rows.map((r) => "<tr>" + cols.map(([k]) => {
       if (k === "direction") return `<td><span class="dir ${esc(r[k])}">${esc(r[k])}</span></td>`;
@@ -196,7 +252,7 @@
       return cell(k, r);
     }).join("") + "</tr>").join("")
       : `<tr><td class="empty" colspan="${cols.length}">No ${loads ? "loads" : "pallets"} in this date range.</td></tr>`;
-    $("txInfo").textContent = `${fmtDate(t.from)} to ${fmtDate(t.to)}: ${num(rows.length)} ${loads ? "loads" : "pallets"}`;
+    $("txInfo").textContent = `${range}: ${num(rows.length)} ${loads ? "loads" : "pallets"}`;
   }
 
   /* ---------- Excel ---------- */
@@ -245,11 +301,15 @@
 
   async function exportTx() {
     if (!window.XLSX) return alert("The Excel tool didn't load. Refresh the page and try again.");
+    const keep = S.party;
     const t = await loadTx(true); if (!t) return;
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, sheet(LOAD_COLS, t.loads), "Loads");
-    XLSX.utils.book_append_sheet(wb, sheet(PALLET_COLS, t.pallets), "Pallets");
-    XLSX.writeFile(wb, `${C.fileBase} Transactions ${t.from} to ${t.to}.xlsx`);
+    if (keep) { S.party = keep; renderTx(); }
+    const data = filtered(), wb = XLSX.utils.book_new();
+    if (!keep) XLSX.utils.book_append_sheet(wb, sheet(PARTY_COLS, partners()), "By Shipper");
+    XLSX.utils.book_append_sheet(wb, sheet(LOAD_COLS, data.loads), "Loads");
+    XLSX.utils.book_append_sheet(wb, sheet(PALLET_COLS, data.pallets), "Pallets");
+    const who = keep ? " " + keep.party.replace(/[^\w\- ]/g, "").slice(0, 30) : "";
+    XLSX.writeFile(wb, `${C.fileBase} Transactions${who} ${t.from} to ${t.to}.xlsx`);
   }
 
   /* ---------- wiring ---------- */
@@ -285,11 +345,14 @@
   $("txBtn").onclick = () => loadTx(false);
   $("txExportBtn").onclick = exportTx;
   document.querySelectorAll(".chip").forEach((c) => (c.onclick = () => { setRange(+c.dataset.days); loadTx(false); }));
-  document.querySelectorAll(".seg-btn").forEach((b) => (b.onclick = () => {
-    S.txView = b.dataset.view;
-    document.querySelectorAll(".seg-btn").forEach((x) => x.classList.toggle("active", x === b));
-    renderTx();
-  }));
+  document.querySelectorAll(".seg-btn").forEach((b) => (b.onclick = () => setView(b.dataset.view)));
+  function pickParty(tr) {
+    const r = S.partnerRows && S.partnerRows[+tr.dataset.i]; if (!r) return;
+    S.party = { party: r.party, direction: r.direction }; setView("loads");
+  }
+  $("txTable").addEventListener("click", (e) => { const tr = e.target.closest("tr[data-i]"); if (tr) pickParty(tr); });
+  $("txTable").addEventListener("keydown", (e) => { const tr = e.target.closest("tr[data-i]"); if (tr && e.key === "Enter") pickParty(tr); });
+  $("txFilterClear").onclick = () => { S.party = null; renderTx(); };
   setRange(7);
 
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});

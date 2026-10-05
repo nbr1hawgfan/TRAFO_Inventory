@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#14306a">
+<meta name="theme-color" content="#C41230">
 <meta name="robots" content="noindex, nofollow">
 <title>Inventory</title>
 <link rel="manifest" href="manifest.json">
@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Semi+Condensed:wght@600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 <script src="config.js"></script>
 </head>
@@ -20,7 +20,7 @@
 <!-- Sign in -->
 <main id="login" class="login" hidden>
   <div class="login-card">
-    <div class="brand-mark">LWH</div>
+    <div class="badge big">LWH</div>
     <h1 id="loginTitle">Inventory</h1>
     <p class="muted">Logistics Warehouse, Inc. &middot; Fort Smith, AR</p>
     <label for="pin">Enter your PIN</label>
@@ -32,26 +32,24 @@
 
 <!-- App -->
 <div id="app" hidden>
-  <header class="topbar">
-    <div class="topbar-inner">
-      <div class="title-block">
-        <div class="brand-mark small">LWH</div>
-        <div>
-          <h1 id="appTitle">Inventory</h1>
-          <p id="asOf" class="as-of"></p>
-        </div>
-      </div>
-      <div class="user-block">
-        <span id="userName"></span>
-        <button id="logoutBtn" class="btn ghost-light">Sign out</button>
+  <header class="masthead">
+    <div class="mast-red">
+      <div class="badge">LWH</div>
+      <div>
+        <h1 id="appTitle">Inventory</h1>
+        <p id="asOf" class="as-of">Logistics Warehouse, Inc.</p>
       </div>
     </div>
-    <nav class="tabs" role="tablist">
+    <div class="mast-black">
+      <span id="userName"></span>
+      <button id="logoutBtn" class="link-btn">Sign out</button>
+    </div>
+  </header>
+  <nav class="tabs" role="tablist">
       <button class="tab active" data-tab="inventory" role="tab">Inventory</button>
       <button class="tab" data-tab="items" role="tab">Item summary</button>
       <button class="tab" data-tab="transactions" role="tab">Transactions</button>
-    </nav>
-  </header>
+  </nav>
 
   <div class="page">
     <!-- totals -->
@@ -117,12 +115,18 @@
         <button class="chip" data-days="1">Yesterday</button>
         <button class="chip" data-days="7">Last 7 days</button>
         <button class="chip" data-days="30">Last 30 days</button>
+        <button class="chip" data-days="90">Last 90 days</button>
       </div>
       <p class="info small-note">Up to 92 days per search.</p>
       <div class="tx-totals" id="txTotals"></div>
       <div class="seg">
         <button class="seg-btn active" data-view="loads">Loads</button>
         <button class="seg-btn" data-view="pallets">Pallets</button>
+        <button class="seg-btn" data-view="partners">By shipper</button>
+      </div>
+      <div id="txFilter" class="filter-bar" hidden>
+        <span id="txFilterText"></span>
+        <button id="txFilterClear" class="btn small">Clear filter</button>
       </div>
       <p id="txInfo" class="info"></p>
       <div class="table-wrap"><table id="txTable"><thead></thead><tbody></tbody></table></div>

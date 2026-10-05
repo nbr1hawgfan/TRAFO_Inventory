@@ -1,7 +1,10 @@
 # Trane Technologies (TRAFO) Inventory - LWH customer PWA
 
 PIN-protected inventory app for Trane, hosted on GitHub Pages.
-Tabs: **Inventory** (search + Excel export), **Item summary** (rollup by item #), **Transactions** (loads and pallets, up to 92 days).
+Tabs: **Inventory** (search + Excel export), **Item summary** (rollup by item #), **Transactions** (loads, pallets, and a
+**By shipper** rollup, up to 92 days; select a shipper to filter its loads and pallets).
+
+Look: red/black LWH portal style, matching the One Source app, customer portal, and toolkit.
 
 This is the first app on LWH's **shared customer-app backend** in the LWH Companion Supabase project
 (`tjivcqxnkftujceumdtx`). The One Source (ONEPH) app is separate and untouched.

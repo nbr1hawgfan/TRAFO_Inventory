@@ -2,7 +2,8 @@
 
 PIN-protected inventory app for Trane, hosted on GitHub Pages.
 Tabs: **Inventory** (search + Excel export), **Item summary** (rollup by item #), **Transactions** (loads, pallets, and a
-**By shipper** rollup, up to 92 days; select a shipper to filter its loads and pallets).
+**By shipper** rollup, up to 92 days; select a shipper to filter its loads and pallets; a quick-find box filters by item #, bill-to ref, INV receipt,
+LWH ID, or shipper as you type).
 
 Look: red/black LWH portal style, matching the One Source app, customer portal, and toolkit.
 

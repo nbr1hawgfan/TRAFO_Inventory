@@ -117,6 +117,8 @@ tr.clickable{cursor:pointer}
 .tx-box p{margin:0;color:var(--muted)}
 .tx-box strong{color:var(--ink);font-variant-numeric:tabular-nums}
 
+.tx-search{display:flex;margin:4px 0 14px}
+.tx-search input{flex:1 1 auto;max-width:720px;min-width:0;padding:12px 14px;border:2px solid var(--black);border-radius:4px;background:var(--white)}
 .seg{display:inline-flex;border:2px solid var(--black);border-radius:4px;overflow:hidden;flex-wrap:wrap}
 .seg-btn{border:0;background:var(--white);color:var(--black);padding:8px 18px;font-weight:600;cursor:pointer}
 .seg-btn+.seg-btn{border-left:2px solid var(--black)}

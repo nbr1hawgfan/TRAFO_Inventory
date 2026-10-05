@@ -1,5 +1,5 @@
 /* Caches the app shell only. Inventory data always comes live from the server. */
-const CACHE = "cust-inv-v1.1";
+const CACHE = "cust-inv-v1.2";
 const SHELL = ["./", "index.html", "styles.css", "app.js", "config.js", "manifest.json",
                "icons/icon-192.png", "icons/icon-512.png", "icons/maskable-512.png"];
 self.addEventListener("install", (e) => {

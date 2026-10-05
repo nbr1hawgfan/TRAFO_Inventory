@@ -189,9 +189,24 @@
   const PARTY_COLS = [["party", "Shipper / Consignee"], ["direction", "Direction"], ["loads", "Loads"], ["pallets", "Pallets"],
     ["qty", "Qty"], ["first", "First Load"], ["last", "Last Load"]];
 
+  /* Quick find: matches pallets on item #, description, bill-to ref, INV receipt, LWH ID or lot,
+     and loads on INV receipt, bill-to ref, item #s, shipper, consignee, carrier or trailer.
+     A matching load brings its pallets along; a matching pallet brings its load along. */
+  function searched() {
+    const t = S.tx, q = ($("txQ").value || "").trim().toUpperCase();
+    if (!q) return { loads: t.loads, pallets: t.pallets };
+    const has = (v) => String(v ?? "").toUpperCase().includes(q);
+    const loadHit = new Set(t.loads.filter((l) => [l.inv_receipt, l.bill_to_ref, l.items, l.shipper, l.consignee, l.carrier, l.trailer].some(has))
+                                    .map((l) => l.inv_receipt));
+    const pallets = t.pallets.filter((p) => loadHit.has(p.inv_receipt) ||
+      [p.item_number, p.item_description, p.bill_to_ref, p.inv_receipt, p.lwh_id, p.lot_number].some(has));
+    const ids = new Set([...loadHit, ...pallets.map((p) => p.inv_receipt)]);
+    return { loads: t.loads.filter((l) => ids.has(l.inv_receipt)), pallets };
+  }
+
   function partners() {
     const m = new Map();
-    S.tx.loads.forEach((l) => {
+    searched().loads.forEach((l) => {
       const k = l.direction + "|" + partyOf(l);
       const p = m.get(k) || { party: partyOf(l), direction: l.direction, loads: 0, pallets: 0, qty: 0, first: l.date, last: l.date };
       p.loads++; p.pallets += Number(l.pallets) || 0; p.qty += Number(l.qty) || 0;
@@ -203,11 +218,11 @@
   }
 
   function filtered() {
-    const t = S.tx, f = S.party;
-    if (!f) return { loads: t.loads, pallets: t.pallets };
-    const loads = t.loads.filter((l) => l.direction === f.direction && partyOf(l) === f.party);
+    const base = searched(), f = S.party;
+    if (!f) return base;
+    const loads = base.loads.filter((l) => l.direction === f.direction && partyOf(l) === f.party);
     const ids = new Set(loads.map((l) => l.inv_receipt));
-    return { loads, pallets: t.pallets.filter((p) => ids.has(p.inv_receipt)) };
+    return { loads, pallets: base.pallets.filter((p) => ids.has(p.inv_receipt)) };
   }
 
   function setView(v) {
@@ -226,7 +241,8 @@
     const f = S.party, data = filtered();
     $("txFilter").hidden = !f || S.txView === "partners";
     if (f) $("txFilterText").textContent = `Showing ${f.direction.toLowerCase()} loads for ${f.party}: ${plural(data.loads.length, "load")}, ${plural(data.pallets.length, "pallet")}`;
-    const range = `${fmtDate(t.from)} to ${fmtDate(t.to)}`;
+    const q = $("txQ").value.trim();
+    const range = `${fmtDate(t.from)} to ${fmtDate(t.to)}` + (q ? ` matching "${q}"` : "");
 
     if (S.txView === "partners") {
       const rows = partners(), max = Math.max(1, ...rows.map((r) => r.loads));
@@ -239,7 +255,9 @@
         : `<tr><td class="empty" colspan="8">No loads in this date range.</td></tr>`;
       S.partnerRows = rows;
       const nIn = rows.filter((r) => r.direction === "Inbound").length;
-      $("txInfo").textContent = `${range}: ${num(nIn)} shippers sent inbound loads. Select a row to see those loads.`;
+      $("txInfo").textContent = rows.length
+        ? `${range}: ${plural(nIn, "shipper")} sent inbound loads. Select a row to see those loads.`
+        : `${range}: nothing found. Try part of the number, or widen the dates.`;
       return;
     }
 
@@ -252,7 +270,9 @@
       return cell(k, r);
     }).join("") + "</tr>").join("")
       : `<tr><td class="empty" colspan="${cols.length}">No ${loads ? "loads" : "pallets"} in this date range.</td></tr>`;
-    $("txInfo").textContent = `${range}: ${num(rows.length)} ${loads ? "loads" : "pallets"}`;
+    $("txInfo").textContent = rows.length || !q
+      ? `${range}: ${plural(rows.length, loads ? "load" : "pallet")}`
+      : `${range}: nothing found. Try part of the number, or widen the dates.`;
   }
 
   /* ---------- Excel ---------- */
@@ -308,7 +328,8 @@
     if (!keep) XLSX.utils.book_append_sheet(wb, sheet(PARTY_COLS, partners()), "By Shipper");
     XLSX.utils.book_append_sheet(wb, sheet(LOAD_COLS, data.loads), "Loads");
     XLSX.utils.book_append_sheet(wb, sheet(PALLET_COLS, data.pallets), "Pallets");
-    const who = keep ? " " + keep.party.replace(/[^\w\- ]/g, "").slice(0, 30) : "";
+    const tag = [keep ? keep.party : "", $("txQ").value.trim()].filter(Boolean).join(" ");
+    const who = tag ? " " + tag.replace(/[^\w\- ]/g, "").slice(0, 40) : "";
     XLSX.writeFile(wb, `${C.fileBase} Transactions${who} ${t.from} to ${t.to}.xlsx`);
   }
 
@@ -353,6 +374,8 @@
   $("txTable").addEventListener("click", (e) => { const tr = e.target.closest("tr[data-i]"); if (tr) pickParty(tr); });
   $("txTable").addEventListener("keydown", (e) => { const tr = e.target.closest("tr[data-i]"); if (tr && e.key === "Enter") pickParty(tr); });
   $("txFilterClear").onclick = () => { S.party = null; renderTx(); };
+  let txTimer = null;
+  $("txQ").addEventListener("input", () => { clearTimeout(txTimer); txTimer = setTimeout(renderTx, 200); });
   setRange(7);
 
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});

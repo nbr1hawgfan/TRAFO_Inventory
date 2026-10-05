@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14306a">
+<meta name="robots" content="noindex, nofollow">
+<title>Inventory</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script src="config.js"></script>
+</head>
+<body>
+
+<!-- Sign in -->
+<main id="login" class="login" hidden>
+  <div class="login-card">
+    <div class="brand-mark">LWH</div>
+    <h1 id="loginTitle">Inventory</h1>
+    <p class="muted">Logistics Warehouse, Inc. &middot; Fort Smith, AR</p>
+    <label for="pin">Enter your PIN</label>
+    <input id="pin" type="password" inputmode="numeric" autocomplete="current-password" maxlength="8" placeholder="6 to 8 digits">
+    <button id="loginBtn" class="btn primary wide">Sign in</button>
+    <p id="loginMsg" class="msg" role="alert"></p>
+  </div>
+</main>
+
+<!-- App -->
+<div id="app" hidden>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="title-block">
+        <div class="brand-mark small">LWH</div>
+        <div>
+          <h1 id="appTitle">Inventory</h1>
+          <p id="asOf" class="as-of"></p>
+        </div>
+      </div>
+      <div class="user-block">
+        <span id="userName"></span>
+        <button id="logoutBtn" class="btn ghost-light">Sign out</button>
+      </div>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="inventory" role="tab">Inventory</button>
+      <button class="tab" data-tab="items" role="tab">Item summary</button>
+      <button class="tab" data-tab="transactions" role="tab">Transactions</button>
+    </nav>
+  </header>
+
+  <div class="page">
+    <!-- totals -->
+    <section class="totals" id="totals">
+      <div><span class="num" id="tPallets">-</span><span class="lbl">Pallets on hand</span></div>
+      <div><span class="num" id="tQty">-</span><span class="lbl">Total quantity</span></div>
+      <div><span class="num" id="tItems">-</span><span class="lbl">Item numbers</span></div>
+      <div id="tLocsWrap"><span class="num" id="tLocs">-</span><span class="lbl">Warehouses</span></div>
+    </section>
+
+    <!-- Inventory -->
+    <section class="panel" id="tab-inventory">
+      <div class="toolbar">
+        <input id="q" type="search" placeholder="Search item #, description, LWH ID, INV receipt, bill-to ref, lot, bay">
+        <select id="loc" aria-label="Warehouse"><option value="ALL">All warehouses</option></select>
+        <button id="searchBtn" class="btn primary">Search</button>
+        <button id="exportBtn" class="btn">Export to Excel</button>
+      </div>
+      <p id="invInfo" class="info"></p>
+      <div class="table-wrap"><table id="invTable"><thead></thead><tbody></tbody></table></div>
+      <div class="pager">
+        <button id="prevBtn" class="btn">Previous</button>
+        <span id="pageInfo"></span>
+        <button id="nextBtn" class="btn">Next</button>
+      </div>
+    </section>
+
+    <!-- Items -->
+    <section class="panel" id="tab-items" hidden>
+      <div class="toolbar">
+        <input id="itemFilter" type="search" placeholder="Filter by item # or description">
+        <button id="itemExportBtn" class="btn">Export to Excel</button>
+      </div>
+      <p id="itemInfo" class="info"></p>
+      <div class="table-wrap"><table id="itemTable">
+        <thead><tr>
+          <th data-sort="item_number">Item #</th>
+          <th data-sort="description">Item Description</th>
+          <th data-sort="pallets" class="r">Pallets</th>
+          <th data-sort="qty" class="r">Qty</th>
+          <th data-sort="bays" class="r">Bays</th>
+          <th data-sort="oldest">Oldest Received</th>
+          <th data-sort="max_age" class="r">Oldest Age (Days)</th>
+          <th></th>
+        </tr></thead><tbody></tbody></table></div>
+    </section>
+
+    <!-- Transactions -->
+    <section class="panel" id="tab-transactions" hidden>
+      <div class="toolbar">
+        <label class="inline">From <input id="txFrom" type="date"></label>
+        <label class="inline">To <input id="txTo" type="date"></label>
+        <select id="txDir" aria-label="Direction">
+          <option value="ALL">Inbound and outbound</option>
+          <option value="Inbound">Inbound only</option>
+          <option value="Outbound">Outbound only</option>
+        </select>
+        <button id="txBtn" class="btn primary">Show</button>
+        <button id="txExportBtn" class="btn">Export to Excel</button>
+      </div>
+      <div class="quick">
+        <button class="chip" data-days="0">Today</button>
+        <button class="chip" data-days="1">Yesterday</button>
+        <button class="chip" data-days="7">Last 7 days</button>
+        <button class="chip" data-days="30">Last 30 days</button>
+      </div>
+      <p class="info small-note">Up to 92 days per search.</p>
+      <div class="tx-totals" id="txTotals"></div>
+      <div class="seg">
+        <button class="seg-btn active" data-view="loads">Loads</button>
+        <button class="seg-btn" data-view="pallets">Pallets</button>
+      </div>
+      <p id="txInfo" class="info"></p>
+      <div class="table-wrap"><table id="txTable"><thead></thead><tbody></tbody></table></div>
+    </section>
+  </div>
+  <footer class="foot">Logistics Warehouse, Inc. &middot; Questions about your inventory? Contact your LWH representative.</footer>
+</div>
+
+<div id="busy" class="busy" hidden><div class="spinner"></div><span id="busyText">Loading</span></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

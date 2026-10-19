@@ -14,6 +14,13 @@ Franklin (FRAWI_Inventory): same code, with Trane's own `config.js` and `manifes
   and blind count sheets. Scanning a bay label while counting jumps to that bay.
 - **Transactions** and **Items** work as before.
 
+## Pallet check vs. quantity count
+Every count is a **pallet check** unless "Also record the quantity on each pallet" is ticked on the request or schedule.
+A pallet check is the fast way: pick the bay, scan every pallet, and each scan saves on its own (no quantity box).
+Results show **Found in place, Wrong bay, Missing, Found not on list** and an accuracy %. A found pallet is recorded at its
+WMS quantity, so quantities never show as off. Tick the box when quantities matter: counters then enter what they see (blind)
+and results add quantity accuracy and differences. Printed count sheets follow the same choice (a Found box vs. a qty box).
+
 ## January: Trane's own labels
 Trane's labels get scanned into the WMS at receiving (Comments field), like Franklin and One Source. They sync to the
 Customer ID field and the app picks them up with no code change: the Customer ID column, search by their label,

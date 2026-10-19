@@ -1,42 +1,48 @@
-# Trane Technologies (TRAFO) Inventory - LWH customer PWA
+# Trane Technologies (TRAFO) Inventory + Cycle Counts - LWH customer PWA
 
-PIN-protected inventory app for Trane, hosted on GitHub Pages.
-Tabs: **Inventory** (search + Excel export), **Item summary** (rollup by item #), **Transactions** (loads, pallets, and a
-**By shipper** rollup, up to 92 days; select a shipper to filter its loads and pallets; a quick-find box filters by item #, bill-to ref, INV receipt,
-LWH ID, or shipper as you type).
+PIN-protected inventory app for Trane, hosted on GitHub Pages. This update moves Trane onto the same app as
+Franklin (FRAWI_Inventory): same code, with Trane's own `config.js` and `manifest.json`.
 
-Look: red/black LWH portal style, matching the One Source app, customer portal, and toolkit.
+## What's new for Trane
+- **Dashboard**: one search box with type-ahead, totals, inventory age, last 14 days in/out, top items, cycle count summary.
+  Time, temperature and today's forecast in the header.
+- **Smart search**: several words, a pasted list of LWH IDs / INV receipts / item numbers / bays (with a "not found" list),
+  `item:` `bay:` `rcv:` `ref:` `lot:` `desc:` prefixes, `bay:E0*` wildcards, `age>180`, "quotes" for item numbers with spaces.
+- **Cycle counts**: request by item, bay or pallet; LWH or Trane counts; blind counting by scanner or phone camera;
+  LWH review with recount and "WMS adjusted"; Trane sees results once closed; weekly/monthly schedules for January.
+- **Barcode sheets**: bay labels, bay lists, bays with their pallets, item barcodes, pallet barcodes from a search,
+  and blind count sheets. Scanning a bay label while counting jumps to that bay.
+- **Transactions** and **Items** work as before.
 
-This is the first app on LWH's **shared customer-app backend** in the LWH Companion Supabase project
-(`tjivcqxnkftujceumdtx`). The One Source (ONEPH) app is separate and untouched.
+## January: Trane's own labels
+Trane's labels get scanned into the WMS at receiving (Comments field), like Franklin and One Source. They sync to the
+Customer ID field and the app picks them up with no code change: the Customer ID column, search by their label,
+counting by scanning their label, and their barcode on printed sheets all appear automatically once the first ones exist.
+Until then those stay hidden, so Trane's screens don't show an empty column.
 
-## What's already live in Supabase
-- `supabase/cust_app_backend.sql`: `cust_app_*` tables and functions (already applied).
-- `supabase/functions/customer-inventory`: the PIN-gated Edge Function (already deployed, `verify_jwt` off because it does its own PIN auth).
-- The browser never holds a database key. The function only answers pages served from `nbr1hawgfan.github.io`.
+## Publish (replaces the current Trane app)
+1. In the TRAFO_Inventory repo, upload these files over the existing ones:
+   `index.html`, `app.js`, `counts.js` (new), `print.js` (new), `styles.css`, `sw.js`, `config.js`, `README.md`.
+   `manifest.json` and `icons/` are unchanged.
+2. Same URL as today: `https://nbr1hawgfan.github.io/TRAFO_Inventory/`. The new service worker replaces the
+   old one automatically; a hard refresh helps on any device that still shows the old screens.
+3. Everyone signs in again once (the app now uses the new `customer-app` server function). Existing Trane PINs keep working.
 
-## Publish
-1. Create a GitHub repo named `LWH-Trane-Inventory` and upload everything in this folder **except** the `supabase/` folder (keep that in your own records; the repo is public).
-2. Settings > Pages > Deploy from branch `main` / root.
-3. App URL: `https://nbr1hawgfan.github.io/LWH-Trane-Inventory/`
+**Roll back:** the previous version is in the repo's history (commit `a760095`). Re-upload its `index.html`, `app.js`,
+`styles.css`, `sw.js` and `config.js`; the old `customer-inventory` server function is still running untouched.
 
-## Manage PIN users (Supabase SQL editor)
+## PIN users (Supabase SQL editor)
 ```sql
-select public.cust_app_add_user('TRAFO', 'Jane Smith - Trane', '12345678');  -- add, or reset a PIN
-select public.cust_app_remove_user('TRAFO', 'Jane Smith - Trane');           -- revoke (ends their sessions)
-select * from public.cust_app_list_users('TRAFO');                           -- who has access
-select * from public.cust_app_activity('TRAFO', 50);                         -- sign-ins and exports
+select public.cust_app_add_user_role('TRAFO', 'Tim - LWH', '87654321', 'lwh');          -- LWH counter / reviewer
+select public.cust_app_add_user_role('TRAFO', 'Name - Trane', '12345678', 'customer');  -- Trane user
+select * from public.cust_app_list_users('TRAFO');
+select * from public.cust_app_activity('TRAFO', 50);
 ```
-PINs are 6 to 8 digits, stored only as salted hashes, and must be unique within a customer.
-Sessions last 8 hours. 10 wrong PINs in 15 minutes pauses that customer's sign-ins for 15 minutes.
+Existing Trane users are "customer" role. LWH users are per customer, so add yours for TRAFO separately from FRAWI.
 
-## Change columns or labels
-Inventory columns come from `cust_app_customers.columns` (ordered `{key, label}` list). Edit it in the
-table editor; no redeploy needed. Available keys: `location, bay, item_number, item_description,
-lwh_id, customer_id, inv_receipt, bill_to_ref, lot_number, unique2, vendor, qty, date_received, age_days`.
+## Suggested schedules
+About 145 bays in use at the warehouses this app shows: a weekly bay rotation over 4 runs counts every bay about
+once a month (about 37 bays per count). Add a monthly "busiest items" schedule if Trane wants their top movers checked more often.
 
-## Add another customer later
-1. Insert a row in `cust_app_customers` (code = WMS customer code, display_name, columns).
-2. Copy this repo, change only `config.js` and the names in `manifest.json`, and publish.
-3. Add their PIN users with `cust_app_add_user`.
-New warehouses: add a row to `cust_app_locations` (code, name, short_name, sort_order).
+The backend (tables, functions, server function) is documented in the FRAWI_Inventory package's `supabase/` folder;
+it is shared by both apps.

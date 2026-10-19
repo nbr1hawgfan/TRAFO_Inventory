@@ -35,40 +35,111 @@
   <header class="masthead">
     <div class="mast-red">
       <div class="badge">LWH</div>
-      <div>
+      <div class="mast-text">
         <h1 id="appTitle">Inventory</h1>
         <p id="asOf" class="as-of">Logistics Warehouse, Inc.</p>
       </div>
     </div>
     <div class="mast-black">
-      <span id="userName"></span>
-      <button id="logoutBtn" class="link-btn">Sign out</button>
+      <div class="wx" id="wx" aria-live="polite">
+        <span id="wxTime" class="wx-time"></span>
+        <span id="wxNow" class="wx-now"></span>
+        <span id="wxDay" class="wx-day"></span>
+      </div>
+      <div class="who">
+        <span id="userName"></span><span id="roleTag" class="role-tag" hidden>LWH</span>
+        <button id="logoutBtn" class="link-btn">Sign out</button>
+      </div>
     </div>
   </header>
   <nav class="tabs" role="tablist">
-      <button class="tab active" data-tab="inventory" role="tab">Inventory</button>
-      <button class="tab" data-tab="items" role="tab">Item summary</button>
-      <button class="tab" data-tab="transactions" role="tab">Transactions</button>
+    <button class="tab active" data-tab="dashboard" role="tab">Dashboard</button>
+    <button class="tab" data-tab="inventory" role="tab">Inventory</button>
+    <button class="tab" data-tab="items" role="tab">Items</button>
+    <button class="tab" data-tab="transactions" role="tab">Transactions</button>
+    <button class="tab" data-tab="counts" role="tab" id="countsTab" hidden>Cycle Counts <span id="countsBadge" class="tab-badge" hidden></span></button>
   </nav>
 
   <div class="page">
-    <!-- totals -->
-    <section class="totals" id="totals">
-      <div><span class="num" id="tPallets">-</span><span class="lbl">Pallets on hand</span></div>
-      <div><span class="num" id="tQty">-</span><span class="lbl">Total quantity</span></div>
-      <div><span class="num" id="tItems">-</span><span class="lbl">Item numbers</span></div>
-      <div id="tLocsWrap"><span class="num" id="tLocs">-</span><span class="lbl">Warehouses</span></div>
+
+    <!-- ============ Dashboard ============ -->
+    <section class="panel" id="tab-dashboard">
+      <div class="hero-search">
+        <label for="dq" class="hero-label">Find anything</label>
+        <div class="suggest-wrap">
+          <input id="dq" type="search" autocomplete="off" placeholder="Item #, description, LWH ID, Customer ID, bay, receipt...">
+          <div id="dqSuggest" class="suggest" hidden></div>
+        </div>
+        <button id="dqBtn" class="btn primary">Search</button>
+      </div>
+      <p class="tips">Paste a list of IDs to look them all up at once. Try <code>bay:E0*</code>, <code>age&gt;180</code>, or "quotes" to keep an item number together.</p>
+
+      <section class="totals" id="totals">
+        <div><span class="num" id="tPallets">-</span><span class="lbl">Pallets on hand</span></div>
+        <div><span class="num" id="tQty">-</span><span class="lbl">Total quantity</span></div>
+        <div><span class="num" id="tItems">-</span><span class="lbl">Item numbers</span></div>
+        <div><span class="num" id="tBays">-</span><span class="lbl">Bays in use</span></div>
+      </section>
+
+      <div class="cards">
+        <article class="card" id="cardCounts" hidden>
+          <h2>Cycle counts</h2>
+          <div id="dashCounts"></div>
+        </article>
+        <article class="card">
+          <h2>Inventory age</h2>
+          <div id="dashAging" class="hbars"></div>
+        </article>
+        <article class="card">
+          <h2>Last 14 days</h2>
+          <div id="dashActivity"></div>
+        </article>
+        <article class="card wide">
+          <div class="card-head">
+            <h2>Top items by pallets</h2>
+            <button class="btn small" data-goto="items">All items</button>
+          </div>
+          <div class="table-wrap short"><table id="dashTop"><thead><tr>
+            <th>Item #</th><th>Description</th><th class="r">Pallets</th><th class="r">Qty</th><th class="r">Bays</th><th class="r">Oldest (days)</th>
+          </tr></thead><tbody></tbody></table></div>
+        </article>
+        <article class="card wide" id="cardLocs" hidden>
+          <h2>By warehouse</h2>
+          <div id="dashLocs" class="hbars"></div>
+        </article>
+      </div>
     </section>
 
-    <!-- Inventory -->
-    <section class="panel" id="tab-inventory">
+    <!-- ============ Inventory ============ -->
+    <section class="panel" id="tab-inventory" hidden>
       <div class="toolbar">
-        <input id="q" type="search" placeholder="Search item #, description, LWH ID, INV receipt, bill-to ref, lot, bay">
+        <div class="suggest-wrap grow">
+          <textarea id="q" rows="1" autocomplete="off" placeholder="Search, or paste a list of IDs, item numbers or bays"></textarea>
+          <div id="qSuggest" class="suggest" hidden></div>
+        </div>
         <select id="loc" aria-label="Warehouse"><option value="ALL">All warehouses</option></select>
         <button id="searchBtn" class="btn primary">Search</button>
-        <button id="exportBtn" class="btn">Export to Excel</button>
+        <button id="clearBtn" class="btn">Clear</button>
       </div>
-      <p id="invInfo" class="info"></p>
+      <details class="help">
+        <summary>Search tips</summary>
+        <ul>
+          <li><strong>Several words</strong> must all match: <code>volute 12x8</code></li>
+          <li><strong>Paste a list</strong> of LWH IDs, Customer IDs, INV receipts, item numbers or bays (one per line, or separated by spaces or commas). Anything not found is listed.</li>
+          <li><strong>Field filters:</strong> <code>item:</code> <code>bay:</code> <code>id:</code> (LWH ID) <code>cust:</code> (Customer ID) <code>rcv:</code> (INV receipt) <code>ref:</code> <code>lot:</code> <code>desc:</code></li>
+          <li><strong>Wildcards:</strong> <code>bay:E0*</code> finds bays E01 to E09. <strong>Age:</strong> <code>age&gt;180</code> or <code>age&lt;30</code> (days)</li>
+          <li><strong>Quotes</strong> keep an item number with spaces together: <code>"SPHFGS6 000 X"</code></li>
+        </ul>
+      </details>
+      <div id="notFound" class="filter-bar warn" hidden></div>
+      <div class="result-bar">
+        <p id="invInfo" class="info"></p>
+        <div class="result-actions">
+          <button id="countTheseBtn" class="btn" hidden>Request a count of these</button>
+          <button id="printPalletsBtn" class="btn">Print barcodes</button>
+          <button id="exportBtn" class="btn red-outline">Export to Excel</button>
+        </div>
+      </div>
       <div class="table-wrap"><table id="invTable"><thead></thead><tbody></tbody></table></div>
       <div class="pager">
         <button id="prevBtn" class="btn">Previous</button>
@@ -77,11 +148,12 @@
       </div>
     </section>
 
-    <!-- Items -->
+    <!-- ============ Items ============ -->
     <section class="panel" id="tab-items" hidden>
       <div class="toolbar">
         <input id="itemFilter" type="search" placeholder="Filter by item # or description">
-        <button id="itemExportBtn" class="btn">Export to Excel</button>
+        <button id="itemPrintBtn" class="btn">Print item barcodes</button>
+        <button id="itemExportBtn" class="btn red-outline">Export to Excel</button>
       </div>
       <p id="itemInfo" class="info"></p>
       <div class="table-wrap"><table id="itemTable">
@@ -97,7 +169,7 @@
         </tr></thead><tbody></tbody></table></div>
     </section>
 
-    <!-- Transactions -->
+    <!-- ============ Transactions ============ -->
     <section class="panel" id="tab-transactions" hidden>
       <div class="toolbar">
         <label class="inline">From <input id="txFrom" type="date"></label>
@@ -108,7 +180,7 @@
           <option value="Outbound">Outbound only</option>
         </select>
         <button id="txBtn" class="btn primary">Show</button>
-        <button id="txExportBtn" class="btn">Export to Excel</button>
+        <button id="txExportBtn" class="btn red-outline">Export to Excel</button>
       </div>
       <div class="quick">
         <button class="chip" data-days="0">Today</button>
@@ -120,9 +192,9 @@
       <p class="info small-note">Up to 92 days per search.</p>
       <div class="tx-totals" id="txTotals"></div>
       <div class="tx-search">
-        <input id="txQ" type="search" placeholder="Find in these transactions: item #, bill-to ref, INV receipt, LWH ID, shipper" aria-label="Find in transactions">
+        <input id="txQ" type="search" placeholder="Find in these transactions: item #, bill-to ref, INV receipt, LWH ID, Customer ID, shipper" aria-label="Find in transactions">
       </div>
-      <div class="seg">
+      <div class="seg" id="txSeg">
         <button class="seg-btn active" data-view="loads">Loads</button>
         <button class="seg-btn" data-view="pallets">Pallets</button>
         <button class="seg-btn" data-view="partners">By shipper</button>
@@ -134,13 +206,46 @@
       <p id="txInfo" class="info"></p>
       <div class="table-wrap"><table id="txTable"><thead></thead><tbody></tbody></table></div>
     </section>
+
+    <!-- ============ Cycle counts ============ -->
+    <section class="panel" id="tab-counts" hidden>
+      <div id="ccListView">
+        <div class="cc-top">
+          <div class="seg" id="ccSeg">
+            <button class="seg-btn active" data-which="open">Open</button>
+            <button class="seg-btn" data-which="closed">Completed</button>
+            <button class="seg-btn" data-which="schedules">Schedules</button>
+          </div>
+          <div class="cc-actions"><button id="ccBayLabelsBtn" class="btn">Print bay barcodes</button>
+          <button id="ccNewBtn" class="btn primary">Request a count</button></div>
+        </div>
+        <p id="ccInfo" class="info"></p>
+        <div id="ccList" class="cc-list"></div>
+        <div id="ccSchedules" hidden></div>
+      </div>
+      <div id="ccDetail" hidden></div>
+    </section>
   </div>
   <footer class="foot">Logistics Warehouse, Inc. &middot; Questions about your inventory? Contact your LWH representative.</footer>
 </div>
 
+<!-- Dialog (count requests, schedules, confirmations) -->
+<div id="modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal-card">
+    <div class="modal-head"><h2 id="modalTitle"></h2><button id="modalClose" class="x-btn" aria-label="Close">&times;</button></div>
+    <div id="modalBody" class="modal-body"></div>
+    <div id="modalFoot" class="modal-foot"></div>
+  </div>
+</div>
+
+<div id="toast" class="toast" hidden role="status"></div>
+<div id="printArea" aria-hidden="true"></div>
 <div id="busy" class="busy" hidden><div class="spinner"></div><span id="busyText">Loading</span></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.12.3/JsBarcode.all.min.js"></script>
 <script src="app.js"></script>
+<script src="counts.js"></script>
+<script src="print.js"></script>
 </body>
 </html>
